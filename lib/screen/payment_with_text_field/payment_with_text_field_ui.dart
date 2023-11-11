@@ -1,149 +1,264 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:get/get.dart';
-import 'package:stripe_payment/screen/payment_with_text_field/controller/payment_form_field_controller.dart';
-import 'package:stripe_payment/screen/widget/custom_text/custom_text.dart';
-import 'package:stripe_payment/screen/widget/custom_text_field/custom_text_field.dart';
+import 'package:http/http.dart' as http;
+import 'package:stripe_payment/screen/payment_with_text_field/widget/loading_button.dart';
 
 class PaymentWithFormUI extends StatefulWidget {
   const PaymentWithFormUI({super.key});
 
   @override
-  State<PaymentWithFormUI> createState() => _PaymentWithFormUIState();
+  // ignore: library_private_types_in_public_api
+  _PaymentWithFormUIState createState() => _PaymentWithFormUIState();
 }
 
 class _PaymentWithFormUIState extends State<PaymentWithFormUI> {
-  @override
-  void initState() {
-    super.initState();
-  }
+  CardDetails _card = CardDetails();
 
-  CardDetails card = CardDetails();
+  bool? _saveCard = false;
+  String kApiUrl = "http://localhost";
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<PaymentFormFieldController>(builder: (controller) {
-      return Scaffold(
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 24),
-          child: ElevatedButton(
-              onPressed: () {
-                controller.handlePayPress(card: card, context: context);
-              },
-              child: const Text("Make Payment")),
-        ),
-        body: SingleChildScrollView(
-          child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 44),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    _card = _card.copyWith(number: "4242424242424242");
+    _card = _card.copyWith(expirationYear: int.tryParse("34"));
+    _card = _card.copyWith(expirationMonth: int.tryParse("10"));
+    _card = _card.copyWith(cvc: "123");
+
+    return Scaffold(
+      appBar: AppBar(),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                    'If you don\'t want to or can\'t rely on the CardField you'
+                    ' can use the dangerouslyUpdateCardDetails in combination with '
+                    'your own card field implementation. \n\n'
+                    'Please beware that this will potentially break PCI compliance: '
+                    'https://stripe.com/docs/security/guide#validating-pci-compliance')),
+            // CardFormField(
+            //   onCardChanged: (card) {
+            //     setState(() {
+            //       cardFieldInputDetails = card!;
+            //     });
+            //   },
+            // ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  //Card Number
-                  const CustomText(
-                    text: "Card Number",
-                    bottom: 8,
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      decoration: const InputDecoration(hintText: 'Number'),
+                      onChanged: (number) {
+                        setState(() {
+                          _card = _card.copyWith(number: number);
+                        });
+                      },
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
-
-                  CustomTextField(
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      card = card.copyWith(number: value);
-                    },
-                    textEditingController: controller.cardNumberController,
-                    readOnly: false,
-                    hintText: "Enter card number",
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    width: 80,
+                    child: TextField(
+                      decoration: const InputDecoration(hintText: 'Exp. Year'),
+                      onChanged: (number) {
+                        setState(() {
+                          _card = _card.copyWith(
+                              expirationYear: int.tryParse(number));
+                        });
+                      },
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
-
-                  //Expire Date
-                  const CustomText(
-                    top: 16,
-                    text: "ExpiredDate",
-                    bottom: 8,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    width: 80,
+                    child: TextField(
+                      decoration: const InputDecoration(hintText: 'Exp. Month'),
+                      onChanged: (number) {
+                        setState(() {
+                          _card = _card.copyWith(
+                              expirationMonth: int.tryParse(number));
+                        });
+                      },
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: CustomTextField(
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            card = card.copyWith(
-                                expirationMonth: int.parse(value));
-                          },
-                          textEditingController: controller.monthController,
-                          readOnly: false,
-                          hintText: "MM",
-                        ),
-                      ),
-                      const SizedBox(
-                        width: 10,
-                      ),
-                      Expanded(
-                        child: CustomTextField(
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            card =
-                                card.copyWith(expirationYear: int.parse(value));
-                          },
-                          textEditingController: controller.yearController,
-                          readOnly: false,
-                          hintText: "YY",
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  //CVV/CVC
-                  const CustomText(
-                    top: 16,
-                    text: "CVV/CVC",
-                    bottom: 8,
-                  ),
-
-                  CustomTextField(
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      card = card.copyWith(cvc: value);
-                    },
-                    textEditingController: controller.cVVCVCController,
-                    readOnly: false,
-                    hintText: "CVV/CVC",
-                  ),
-
-                  //Card Holder name
-
-                  const CustomText(
-                    top: 16,
-                    text: "Card Holder Name",
-                    bottom: 8,
-                  ),
-
-                  CustomTextField(
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {},
-                    textEditingController: controller.cardHolderNameController,
-                    readOnly: false,
-                    hintText: "Enter card holder name",
-                  ),
-
-                  //Enter Ammount
-
-                  const CustomText(
-                    top: 16,
-                    text: "Amount",
-                    bottom: 8,
-                  ),
-
-                  CustomTextField(
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {},
-                    textEditingController: controller.ammountController,
-                    readOnly: false,
-                    hintText: "\$",
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    width: 80,
+                    child: TextField(
+                      decoration: const InputDecoration(hintText: 'CVC'),
+                      onChanged: (number) {
+                        setState(() {
+                          _card = _card.copyWith(cvc: number);
+                        });
+                      },
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
                 ],
-              )),
+              ),
+            ),
+            CheckboxListTile(
+              value: _saveCard,
+              onChanged: (value) {
+                setState(() {
+                  _saveCard = value;
+                });
+              },
+              title: const Text('Save card during payment'),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: LoadingButton(
+                onPressed: _handlePayPress,
+                text: 'Pay',
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _handlePayPress() async {
+    await Stripe.instance.dangerouslyUpdateCardDetails(_card);
+
+    try {
+      // 1. Gather customer billing information (ex. email)
+
+      const billingDetails = BillingDetails(
+        email: 'email@stripe.com',
+        phone: '+48888000888',
+        address: Address(
+          city: 'Houston',
+          country: 'US',
+          line1: '1459  Circle Drive',
+          line2: '',
+          state: 'Texas',
+          postalCode: '77063',
+        ),
+      ); // mocked data for tests
+
+      // 2. Create payment method
+      final paymentMethod = await Stripe.instance.createPaymentMethod(
+          params: const PaymentMethodParams.card(
+        paymentMethodData: PaymentMethodData(
+          billingDetails: billingDetails,
+        ),
+      ));
+
+      // 3. call API to create PaymentIntent
+      final paymentIntentResult = await callNoWebhookPayEndpointMethodId(
+        useStripeSdk: true,
+        paymentMethodId: paymentMethod.id,
+        currency: 'usd', // mocked data
+        items: [
+          'id-1',
+        ],
       );
-    });
+
+      if (paymentIntentResult['error'] != null) {
+        // Error during creating or confirming Intent
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${paymentIntentResult['error']}')));
+        return;
+      }
+
+      if (paymentIntentResult['clientSecret'] != null &&
+          paymentIntentResult['requiresAction'] == null) {
+        // Payment succedeed
+
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content:
+                Text('Success!: The payment was confirmed successfully!')));
+        return;
+      }
+
+      if (paymentIntentResult['clientSecret'] != null &&
+          paymentIntentResult['requiresAction'] == true) {
+        // 4. if payment requires action calling handleNextAction
+        final paymentIntent = await Stripe.instance
+            .handleNextAction(paymentIntentResult['clientSecret']);
+
+        if (paymentIntent.status == PaymentIntentsStatus.RequiresConfirmation) {
+          // 5. Call API to confirm intent
+          await confirmIntent(paymentIntent.id);
+        } else {
+          // Payment succedeed
+          // ignore: use_build_context_synchronously
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('Error: ${paymentIntentResult['error']}')));
+        }
+      }
+    } catch (e) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      rethrow;
+    }
+  }
+
+  Future<void> confirmIntent(String paymentIntentId) async {
+    final result = await callNoWebhookPayEndpointIntentId(
+        paymentIntentId: paymentIntentId);
+    if (result['error'] != null) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: ${result['error']}')));
+    } else {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Success!: The payment was confirmed successfully!')));
+    }
+  }
+
+  Future<Map<String, dynamic>> callNoWebhookPayEndpointIntentId({
+    required String paymentIntentId,
+  }) async {
+    final url = Uri.parse('$kApiUrl/charge-card-off-session');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'paymentIntentId': paymentIntentId}),
+    );
+    return json.decode(response.body);
+  }
+
+  Future<Map<String, dynamic>> callNoWebhookPayEndpointMethodId({
+    required bool useStripeSdk,
+    required String paymentMethodId,
+    required String currency,
+    List<String>? items,
+  }) async {
+    final url = Uri.parse('$kApiUrl/pay-without-webhooks');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'useStripeSdk': useStripeSdk,
+        'paymentMethodId': paymentMethodId,
+        'currency': currency,
+        'items': items
+      }),
+    );
+    return json.decode(response.body);
   }
 }

@@ -1,15 +1,22 @@
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:stripe_payment/screen/payment_sheet/payment_sheet_ui.dart';
-import 'package:stripe_payment/screen/payment_with_text_field/controller/payment_form_field_controller.dart';
 import 'package:stripe_payment/screen/payment_with_text_field/payment_with_text_field_ui.dart';
 
 void main() {
-  Get.lazyPut(() => PaymentFormFieldController(), fenix: true);
+  //Get.lazyPut(() => PaymentFormFieldController(), fenix: true);
   Stripe.publishableKey =
       'pk_test_51O9nIoHSFV2X1M0tWjfHXoRLm6Y2qOzTRjn2EErsoHvLeW8Wzk3WnLisaVdHFHcXCGFydr2OfkgPOQA7pYKyZpjq00jKmoZewB';
-  runApp(const MyApp());
+
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => const MyApp(), // Wrap your app
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -24,6 +31,7 @@ class MyApp extends StatelessWidget {
     ];
 
     return GetMaterialApp(
+        builder: DevicePreview.appBuilder,
         debugShowCheckedModeBanner: false,
         title: 'Flutter Demo',
         theme: ThemeData(
